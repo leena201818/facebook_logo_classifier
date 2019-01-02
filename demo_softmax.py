@@ -1,48 +1,51 @@
 import argparse
 
-import transfer_cnn_train
-import transfer_cnn_inference
+import transfer_cnn_softmax_inference
+import transfer_cnn_softmax_train
 import os
 
 def main(args):
     print(args.mod)
+    assert os.path.exists(args.model_file)
+
     if args.mod == 'predict':
         assert args.pred_dir is not None or args.pred_image is not None or args.pred_dir_generator is not None
+
+        infer = transfer_cnn_softmax_inference.inference(model_file=args.model_file)
 
         print(args.pred_dir)
         print(args.pred_image)
 
         if args.pred_dir_generator is not None:
-            assert os.path.exists(args.model_file)
             assert os.path.exists(args.pred_dir_generator)
 
-            pre_result,_,_ = transfer_cnn_inference.predict_gen(args.pred_dir_generator)
+            pre_result,_,_ = infer.predict_gen(args.pred_dir_generator)
             for file,label in pre_result.items():
                 print("{}:{}".format(os.path.basename(file), label))
 
         if args.pred_dir is not None:
             assert os.path.exists(args.pred_dir)
-            pre_result,_ = transfer_cnn_inference.predict_dir(args.pred_dir)
+            pre_result,_ = infer.predict_dir(args.pred_dir)
             for file,label in pre_result.items():
                 print("{}:{}".format(os.path.basename(file), label))
 
         if args.pred_image is not None:
             assert os.path.exists(args.pred_image)
-            pre_result,_ = transfer_cnn_inference.predict([args.pred_image])
+            pre_result,_ = infer.predict([args.pred_image])
             for file,label in pre_result.items():
                 print("{}:{}".format(os.path.basename(file), label))
 
     if args.mod == 'train':
-        transfer_cnn_train.train(args.model_file,args.train_dir,epoch = args.epoch,batch_size = args.batch_size,validation_split = args.validation_split)
-
+        train = transfer_cnn_softmax_train.train(args.train_dir,args.model_file,epochs=args.epoch,batch_size=args.batch_size,validation_split=args.validation_split,rewrite_feature=False)
+        train.train()
 
     print('transfer completed.')
 
 if __name__ == '__main__':
 
-    # 训练的command arguments: train model.h5 - -train_dir dataset/training_set
+    # 训练的command arguments: train model_softmax.h5 --train_dir dataset/training_set
     # 预测的command arguments:
-    # predict model2.h5 --pred_dir_generator dataset/prediction/
+    # predict model_softmax.h5 --pred_dir_generator dataset/prediction/
     # --pred_dir
     # dataset / prediction / generator_subdir - -pred_image
     # dataset / prediction / generator_subdir / logo_011304.jpg

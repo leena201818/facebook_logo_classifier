@@ -55,6 +55,13 @@ def generate_feature(train_dir):
     return write_gap(Xception, (299, 299),'Xception',train_dir,xception.preprocess_input)
 
 
+#采用多分类时，预测Y必须为onehot向量，classes是分类总数，labels是形状如（samples,）的ndarray,其值表示类序号
+def to_onehot(classes,labels):
+    r = np.zeros(shape=(len(labels),classes))
+    for i in range( len(labels) ):
+        r[i,labels[i]] = 1.0
+    return r
+
 # 将多个模型特征向量拼接起来
 def concat_feature():
     X_train = []
@@ -62,6 +69,7 @@ def concat_feature():
         with h5py.File(os.path.join(config.CUR_PATH,filename), 'r') as h:
             X_train.append(np.array(h['train']))
             Y_train = np.array(h['label'])
+            Y_train = to_onehot(2,Y_train)
 
     X_train = np.concatenate(X_train, axis=1)       #[ [batch_size,feature],[],[] ] 拼接
 
@@ -73,48 +81,17 @@ def concat_feature():
 def fit(X_train,Y_train,model_file = 'model.h5',epoch = 120,batch_size = 128,validation_split = 0.8):
 
     weight_file = model_file
-    # input_tensor = Input(X_train.shape[1:])
-    # x = input_tensor
-    # x = Dropout(0.5)(x)
-    # x = Dense(1, activation='sigmoid')(x)
-    # model = Model(input_tensor, x)
-    #
-    # model.compile(optimizer='adadelta',
-    #               loss='binary_crossentropy',
-    #               metrics=['accuracy']
-    #               )
-    # history = model.fit(X_train, Y_train, batch_size=batch_size, epochs=epoch, validation_split=validation_split,callbacks=[ModelCheckpoint(weight_file, monitor='val_loss', verbose=0, save_best_only=True,save_weights_only=False, mode='auto', period=1)])
-
-    def scheduler(epoch):
-        if int(epoch % 40) == 0 and epoch != 0:
-            lr = K.get_value(model.optimizer.lr)
-            K.set_value(model.optimizer.lr, lr * 0.5)
-            print("lr changed to {} at epoch{}".format(lr * 0.5, epoch))
-            return K.get_value(model.optimizer.lr)
-        else:
-            print("epoch({}) lr is {}".format(epoch, K.get_value(model.optimizer.lr)))
-            return K.get_value(model.optimizer.lr)
-
-    reduce_lr = LearningRateScheduler(scheduler)
-
-    adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999)
-
     input_tensor = Input(X_train.shape[1:])
     x = input_tensor
-    # x = Dropout(0.5)(x)
-    # x = Dense(128,activation='relu')(x)       #容易过拟合
     x = Dropout(0.5)(x)
-    x = Dense(2, activation='softmax')(x)
+    x = Dense(1, activation='sigmoid')(x)
     model = Model(input_tensor, x)
 
-    model.compile(optimizer=adam,
-                  loss='categorical_crossentropy',
+    model.compile(optimizer='adadelta',
+                  loss='binary_crossentropy',
                   metrics=['accuracy']
                   )
-
-    history = model.fit(X_train, Y_train, batch_size=batch_size, epochs=epoch, validation_split=validation_split,callbacks=[reduce_lr,ModelCheckpoint(weight_file, monitor='val_loss', verbose=0, save_best_only=True,save_weights_only=False, mode='auto', period=1)])
-
-
+    history = model.fit(X_train, Y_train, batch_size=batch_size, epochs=epoch, validation_split=validation_split,callbacks=[ModelCheckpoint(weight_file, monitor='val_loss', verbose=0, save_best_only=True,save_weights_only=False, mode='auto', period=1)])
 
     model.save(model_file)
 
