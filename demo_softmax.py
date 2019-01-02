@@ -36,7 +36,7 @@ def main(args):
                 print("{}:{}".format(os.path.basename(file), label))
 
     if args.mod == 'train':
-        train = transfer_cnn_softmax_train.train(args.train_dir,args.model_file,epochs=args.epoch,batch_size=args.batch_size,validation_split=args.validation_split,rewrite_feature=False)
+        train = transfer_cnn_softmax_train.train(args.train_dir,args.model_file,epochs=args.epoch,batch_size=args.batch_size,validation_split=args.validation_split,rewrite_feature=True)
         train.train()
 
     print('transfer completed.')
